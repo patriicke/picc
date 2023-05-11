@@ -1,42 +1,43 @@
-import os
+import pymysql
+import serial
 
-# Enter the path to the text file where the valid card IDs will be stored
-valid_card_file = "cards.txt"
+def connect():
+    connection = pymysql.connect(
+        host='localhost',
+        user='patriicke',
+        password='DATAbase@123',
+        db='picc_project',
+        charset='utf8mb4',
+        cursorclass=pymysql.cursors.DictCursor
+    )
+    return connection
 
-def is_valid_card(card_id):
-    # Check if the card ID is present in the text file
-    with open(valid_card_file, "r") as f:
-        valid_cards = f.read().splitlines()
-    if card_id in valid_cards:
-        return True
-    else:
-        return False
-
-def add_valid_card(card_id):
-    # Add the card ID to the text file if it's not already present
-    with open(valid_card_file, "a+") as f:
-        f.seek(0)
-        if card_id not in f.read().splitlines():
-            f.write(card_id + "\n")
-            print("Valid card added.")
-        else:
-            print("Card already exists.")
-
-# Initialize the RFID reader
-# ...
 
 while True:
-    if not rfid.PICC_IsNewCardPresent():
+    sr = serial.Serial('/dev/ttyACM0', 9600)
+    data = sr.readline().decode('utf-8').strip()
+    card  = ''
+    
+    if "****"  in data or 'This card was' in data:
         continue
-    if not rfid.PICC_ReadCardSerial():
-        continue
-    card_id = "".join([str(rfid.uid.uidByte[i]) for i in range(4)])
-    if is_valid_card(card_id):
-        # Valid card detected
-        # ...
-        add_valid_card(card_id)
+    elif "READING" in data:
+        print(data)
     else:
-        # Invalid card detected
-        # ...
-        print("Invalid card detected")
+        card = data;
+        print("Card: ", card)
+        connection = connect()
+        try:
+            with connection.cursor() as cursor:
+                sql = 'SELECT * FROM authorized_cards WHERE card_uid = %s'
+                cursor.execute(sql, card)
+                result = cursor.fetchone()
+        finally:
+            connection.close()
+    
+        if result:
+            sr.write(b'200')
+            print("200")
+        else:
+            sr.write(b'404')
+            print("404")
         
