@@ -14,10 +14,8 @@ int LED_RED_PIN = 3;
 
 int PIEZO_BUZZER_PIN = 7;
 
-int ERROR_FREQUENCY = 400;
+int ERROR_FREQUENCY = 300;
 int SUCCESS_FREQUENCY = 1000;
-
-int STATUS = -1;
 
 void setup()
 {
@@ -30,7 +28,6 @@ void setup()
 
   SPI.begin();
   rfid.PCD_Init();
-  Serial.println(F("READING THE CARD UNIQUE ID:"));
   for (byte i = 0; i < 6; i++)
   {
     key.keyByte[i] = 0xFF;
@@ -54,52 +51,28 @@ void loop()
       rfid.uid.uidByte[2] != nuidPICC[2] ||
       rfid.uid.uidByte[3] != nuidPICC[3])
   {
-    STATUS = -1;
-    for (byte i = 0; i < 4; i++)
-    {
-      nuidPICC[i] = rfid.uid.uidByte[i];
+    for (byte i = 0; i < 4; i++) {
+        nuidPICC[i] = rfid.uid.uidByte[i];
     }
-    Serial.println(F("********************"));
     printHex(rfid.uid.uidByte, rfid.uid.size);
-    Serial.println(F("\n********************"));
   }
   else
   {
-    if (STATUS == 1)
-    {
-      success();
-    }
-
-    if (STATUS == 0)
-    {
-      error();
-    }
-    
+    printHex(rfid.uid.uidByte, rfid.uid.size);
   }
-
-  if (Serial.available())
-  {
-    String message = Serial.readStringUntil('\n');
-    message.trim();
-    if (strcmp(message.c_str(), "200") == 0)
-    {
-      STATUS = 1;
-      success();
-    }
-    else
-    {
-      STATUS = 0;
-      error();
-    }
-  }
-
-  /*
-   * Halt PICC
-   * Stop encryption on PCD
-   */
-
+  
   rfid.PICC_HaltA();
   rfid.PCD_StopCrypto1();
+
+  if(Serial.available())
+  {
+    String message = Serial.readStringUntil('\n');
+      if (strcmp(message.c_str(), "200") == 0) {
+        authorized();
+      } else {
+        notAuthorized();
+      }
+  }
 }
 
 void printHex(byte *buffer, byte bufferSize)
@@ -112,18 +85,21 @@ void printHex(byte *buffer, byte bufferSize)
   Serial.println("");
 }
 
-void success()
+void authorized()
 {
   digitalWrite(LED_GREEN_PIN, HIGH);
-  tone(PIEZO_BUZZER_PIN, SUCCESS_FREQUENCY, 750);
-  delay(1000);
+  tone(PIEZO_BUZZER_PIN, SUCCESS_FREQUENCY, 800);
+  delay(1500);
   digitalWrite(LED_GREEN_PIN, LOW);
 }
 
-void error()
+void notAuthorized()
 {
   digitalWrite(LED_RED_PIN, HIGH);
-  tone(PIEZO_BUZZER_PIN, ERROR_FREQUENCY, 750);
-  delay(1000);
+  tone(PIEZO_BUZZER_PIN, ERROR_FREQUENCY, 300);
+  delay(800);
+  tone(PIEZO_BUZZER_PIN, ERROR_FREQUENCY, 300);
+  delay(800);
+  tone(PIEZO_BUZZER_PIN, ERROR_FREQUENCY, 300);
   digitalWrite(LED_RED_PIN, LOW);
 }
