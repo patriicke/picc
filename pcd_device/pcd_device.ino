@@ -51,8 +51,9 @@ void loop()
       rfid.uid.uidByte[2] != nuidPICC[2] ||
       rfid.uid.uidByte[3] != nuidPICC[3])
   {
-    for (byte i = 0; i < 4; i++) {
-        nuidPICC[i] = rfid.uid.uidByte[i];
+    for (byte i = 0; i < 4; i++)
+    {
+      nuidPICC[i] = rfid.uid.uidByte[i];
     }
     printHex(rfid.uid.uidByte, rfid.uid.size);
   }
@@ -60,18 +61,21 @@ void loop()
   {
     printHex(rfid.uid.uidByte, rfid.uid.size);
   }
-  
+
   rfid.PICC_HaltA();
   rfid.PCD_StopCrypto1();
 
-  if(Serial.available())
+  if (Serial.available())
   {
     String message = Serial.readStringUntil('\n');
-      if (strcmp(message.c_str(), "200") == 0) {
-        authorized();
-      } else {
-        notAuthorized();
-      }
+    if (strcmp(message.c_str(), "200") == 0)
+    {
+      authorized();
+    }
+    else
+    {
+      notAuthorized();
+    }
   }
 }
 
@@ -91,6 +95,9 @@ void authorized()
   tone(PIEZO_BUZZER_PIN, SUCCESS_FREQUENCY, 800);
   delay(1500);
   digitalWrite(LED_GREEN_PIN, LOW);
+  String balance = readBytesFromBlock();
+  Serial.println(balance);
+  Serial.println(F("\n***************************\n"));
 }
 
 void notAuthorized()
@@ -102,4 +109,64 @@ void notAuthorized()
   delay(800);
   tone(PIEZO_BUZZER_PIN, ERROR_FREQUENCY, 300);
   digitalWrite(LED_RED_PIN, LOW);
+}
+
+void writeBytesToBlock(byte block, byte buff[])
+{
+  card_status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, block, &key, &(mfrc522.uid));
+
+  if (card_status != MFRC522::STATUS_OK)
+  {
+    Serial.print(F("PCD_Authenticate() failed: "));
+    Serial.println(mfrc522.GetStatusCodeName(card_status));
+    return;
+  }
+
+  else
+  {
+    Serial.println(F("PCD_Authenticate() success: "));
+  }
+  // Write block
+  card_status = mfrc522.MIFARE_Write(block, buff, 16);
+
+  if (card_status != MFRC522::STATUS_OK)
+  {
+    Serial.print(F("MIFARE_Write() failed: "));
+    Serial.println(mfrc522.GetStatusCodeName(card_status));
+    return;
+  }
+  else
+  {
+    Serial.println(F("Data saved."));
+  }
+}
+
+String readBytesFromBlock()
+{
+  byte blockNumber = 4;
+
+  card_status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, blockNumber, &key, &(mfrc522.uid));
+  if (card_status != MFRC522::STATUS_OK)
+  {
+    Serial.print(F("Authentication failed: "));
+    Serial.println(mfrc522.GetStatusCodeName(card_status));
+    return;
+  }
+  byte arrayAddress[18];
+  byte buffersize = sizeof(arrayAddress);
+  card_status = mfrc522.MIFARE_Read(blockNumber, arrayAddress, &buffersize);
+  if (card_status != MFRC522::STATUS_OK)
+  {
+    Serial.print(F("Reading failed: "));
+    Serial.println(mfrc522.GetStatusCodeName(card_status));
+    return;
+  }
+
+  String value = "";
+  for (uint8_t i = 0; i < 16; i++)
+  {
+    value += (char)arrayAddress[i];
+  }
+  value.trim();
+  return value;
 }
