@@ -51,8 +51,9 @@ void loop()
       rfid.uid.uidByte[2] != nuidPICC[2] ||
       rfid.uid.uidByte[3] != nuidPICC[3])
   {
-    for (byte i = 0; i < 4; i++) {
-        nuidPICC[i] = rfid.uid.uidByte[i];
+    for (byte i = 0; i < 4; i++)
+    {
+      nuidPICC[i] = rfid.uid.uidByte[i];
     }
     printHex(rfid.uid.uidByte, rfid.uid.size);
   }
@@ -60,18 +61,21 @@ void loop()
   {
     printHex(rfid.uid.uidByte, rfid.uid.size);
   }
-  
+
   rfid.PICC_HaltA();
   rfid.PCD_StopCrypto1();
 
-  if(Serial.available())
+  if (Serial.available())
   {
     String message = Serial.readStringUntil('\n');
-      if (strcmp(message.c_str(), "200") == 0) {
-        authorized();
-      } else {
-        notAuthorized();
-      }
+    if (strcmp(message.c_str(), "200") == 0)
+    {
+      authorized();
+    }
+    else
+    {
+      notAuthorized();
+    }
   }
 }
 
